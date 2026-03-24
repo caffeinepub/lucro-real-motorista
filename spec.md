@@ -1,31 +1,35 @@
 # Lucro Real Motorista
 
 ## Current State
-New project. No existing application files.
+App funcional com 3 telas: configuração de veículo (VehicleSetup), registro de corridas (RideEntry), e resumo do dia (DaySummary). Dados persistidos no localStorage. Calcula lucro líquido descontando taxa da plataforma (Uber 28%, 99 20%, inDrive 10%) e custo de km (combustão ou elétrico). Tem cronômetro de corrida e exportação CSV.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Screen 1 (Vehicle Setup): toggle combustão/elétrico, price per liter/kWh input, avg consumption input, cost-per-km calculation, "Começar a Rodar" button
-- Screen 2 (Ride Entry): gross ride value input, km input, platform selector (Uber/99/inDrive), "Adicionar ao Dia" button, running ride list
-- Screen 3 (Financial Summary): daily totals (gross revenue, platform fees, operating cost, net profit), per-platform profit breakdown table, "Finalizar Expediente e Zerar" button
-- Fixed platform fee rates: Uber 28%, 99 20%, inDrive 10%
-- Per-ride math: platform fee = gross × rate; ride cost = km × cost per km; net = gross − fee − cost
-- Currency formatted as R$ with Brazilian decimal notation
-- Mobile-first dark high-contrast theme
-- Smooth navigation between screens
-- Backend storage for vehicle config and daily rides
+- Tela de Gráficos dedicada com navegação entre Dia / Mês / Ano
+- Gráficos por plataforma separados: barras de lucro por hora do dia, pizza de distribuição de corridas por plataforma
+- Gráfico combinado: linha de lucro acumulado ao longo do tempo
+- Histórico multi-dia: corridas são salvas com data, permitindo visualização por mês e ano
+- Painel de estatísticas rápidas na tela principal: total de corridas, lucro médio por corrida, melhor plataforma do dia
+- Visual completamente renovado: dark tech dashboard, gradientes neon, cards com glow, tipografia bold
 
 ### Modify
-- N/A
+- App.tsx: adicionar nova tela 'charts' e tipo Screen
+- RideEntry: cada corrida salva com timestamp (data/hora)
+- DaySummary: link para tela de gráficos
+- types.ts: Ride deve ter campo `timestamp: string` (ISO date)
+- localStorage: rides salvos com histórico acumulado multi-dia (não limpar ao finalizar expediente, só arquivar)
 
 ### Remove
-- N/A
+- Nada removido
 
 ## Implementation Plan
-1. Backend: store vehicle config (type, energy price, avg consumption, cost per km) and daily rides (gross, km, platform, fee, cost, net profit)
-2. Frontend: three-screen flow with bottom nav or tab navigation
-3. Screen 1: vehicle type toggle, two inputs, save button
-4. Screen 2: ride entry form, platform buttons, add ride, scrollable ride list
-5. Screen 3: computed daily summary, platform breakdown, reset button
-6. Dark theme with lime-green accent (#B7F23D), high-contrast for outdoor use
+1. Atualizar types.ts: adicionar `timestamp` em Ride, adicionar 'charts' em Screen
+2. Criar componente ChartsScreen.tsx com:
+   - Tabs: Dia / Mês / Ano
+   - Recharts: BarChart de lucro por hora, PieChart de corridas por plataforma, LineChart de lucro acumulado
+   - Filtros de data
+3. Atualizar App.tsx para incluir tela de gráficos
+4. Redesign visual completo: dark dashboard profissional com cores neon (verde para lucro, azul para Uber, amarelo para 99, laranja para inDrive)
+5. Atualizar RideEntry para adicionar timestamp automaticamente ao registrar corrida
+6. Validar e fazer build

@@ -1,5 +1,14 @@
-import { ChevronRight, Plus, Settings, TrendingUp } from "lucide-react";
-import { useState } from "react";
+import {
+  BarChart2,
+  ChevronRight,
+  Clock,
+  Plus,
+  Settings,
+  Square,
+  Timer,
+  TrendingUp,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   PLATFORM_LABELS,
@@ -8,6 +17,7 @@ import {
   type Ride,
   type VehicleConfig,
   formatBRL,
+  formatDuration,
   formatKm,
 } from "../types";
 
@@ -17,12 +27,19 @@ interface Props {
   onAddRide: (ride: Ride) => void;
   onGoToSetup: () => void;
   onGoToSummary: () => void;
+  onGoToCharts: () => void;
 }
 
 const PLATFORM_BG: Record<Platform, string> = {
-  uber: "oklch(0.94 0 0)",
-  "99": "oklch(0.65 0.22 25)",
-  indrive: "oklch(0.72 0.18 145)",
+  uber: "#1a73e8",
+  "99": "#ffd600",
+  indrive: "#f39c12",
+};
+
+const PLATFORM_TEXT: Record<Platform, string> = {
+  uber: "#ffffff",
+  "99": "#1a1a00",
+  indrive: "#1a0e00",
 };
 
 export default function RideEntry({
@@ -31,12 +48,54 @@ export default function RideEntry({
   onAddRide,
   onGoToSetup,
   onGoToSummary,
+  onGoToCharts,
 }: Props) {
   const [grossValue, setGrossValue] = useState("");
   const [km, setKm] = useState("");
   const [platform, setPlatform] = useState<Platform | null>(null);
 
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [rideStartTime, setRideStartTime] = useState<number | null>(null);
+  const [rideEndTime, setRideEndTime] = useState<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setElapsed((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isRunning]);
+
+  const handleStartRide = () => {
+    const now = Date.now();
+    setRideStartTime(now);
+    setRideEndTime(null);
+    setElapsed(0);
+    setIsRunning(true);
+  };
+
+  const handleStopRide = () => {
+    setIsRunning(false);
+    setRideEndTime(Date.now());
+  };
+
+  const resetTimer = () => {
+    setIsRunning(false);
+    setElapsed(0);
+    setRideStartTime(null);
+    setRideEndTime(null);
+  };
+
+  const totalGross = rides.reduce((s, r) => s + r.grossValue, 0);
   const totalNetProfit = rides.reduce((sum, r) => sum + r.netProfit, 0);
+  const totalKm = rides.reduce((s, r) => s + r.km, 0);
 
   const preview = (() => {
     const g = Number.parseFloat(grossValue.replace(",", "."));
@@ -71,11 +130,15 @@ export default function RideEntry({
       rideCost: cost,
       netProfit: net,
       timestamp: Date.now(),
+      duration: rideEndTime ? elapsed : undefined,
+      startTime: rideStartTime ?? undefined,
+      endTime: rideEndTime ?? undefined,
     };
     onAddRide(ride);
     setGrossValue("");
     setKm("");
     setPlatform(null);
+    resetTimer();
     toast.success(`Corrida adicionada! Lucro: ${formatBRL(net)}`);
   };
 
@@ -97,38 +160,222 @@ export default function RideEntry({
           <Settings size={16} style={{ color: "oklch(0.68 0.025 225)" }} />
         </button>
 
-        <button
-          type="button"
-          onClick={onGoToSummary}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all active:scale-95"
-          style={{ background: "oklch(0.16 0.022 242)" }}
-          data-ocid="ride.summary.button"
-        >
-          <TrendingUp size={14} style={{ color: "oklch(0.91 0.22 125)" }} />
-          <div className="text-right">
-            <div className="text-xs" style={{ color: "oklch(0.68 0.025 225)" }}>
-              Lucro do Dia
-            </div>
-            <div
-              className="text-sm font-bold"
-              style={{
-                color:
-                  rides.length > 0
-                    ? "oklch(0.91 0.22 125)"
-                    : "oklch(0.68 0.025 225)",
-              }}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onGoToCharts}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all active:scale-95"
+            style={{ background: "oklch(0.16 0.022 242)" }}
+            data-ocid="ride.charts.button"
+          >
+            <BarChart2 size={14} style={{ color: "#1a73e8" }} />
+            <span
+              className="text-xs font-semibold"
+              style={{ color: "oklch(0.68 0.025 225)" }}
             >
-              {formatBRL(totalNetProfit)}
+              Gráficos
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onGoToSummary}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all active:scale-95"
+            style={{ background: "oklch(0.16 0.022 242)" }}
+            data-ocid="ride.summary.button"
+          >
+            <TrendingUp size={14} style={{ color: "oklch(0.91 0.22 125)" }} />
+            <div className="text-right">
+              <div
+                className="text-xs"
+                style={{ color: "oklch(0.68 0.025 225)" }}
+              >
+                Lucro do Dia
+              </div>
+              <div
+                className="text-sm font-bold"
+                style={{
+                  color:
+                    rides.length > 0
+                      ? "oklch(0.91 0.22 125)"
+                      : "oklch(0.68 0.025 225)",
+                }}
+              >
+                {formatBRL(totalNetProfit)}
+              </div>
             </div>
-          </div>
-          <ChevronRight size={14} style={{ color: "oklch(0.68 0.025 225)" }} />
-        </button>
+            <ChevronRight
+              size={14}
+              style={{ color: "oklch(0.68 0.025 225)" }}
+            />
+          </button>
+        </div>
       </header>
+
+      {/* Mini dashboard */}
+      {rides.length > 0 && (
+        <div
+          className="mx-5 mt-4 rounded-2xl p-4 border"
+          style={{
+            background: "oklch(0.13 0.02 242)",
+            borderColor: "oklch(0.24 0.025 245)",
+          }}
+          data-ocid="ride.dashboard.panel"
+        >
+          <div
+            className="text-xs font-semibold uppercase tracking-widest mb-3"
+            style={{ color: "oklch(0.50 0.02 240)" }}
+          >
+            Painel do Dia
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              {
+                label: "Corridas",
+                value: String(rides.length),
+                isProfit: false,
+              },
+              { label: "Bruto", value: formatBRL(totalGross), isProfit: false },
+              { label: "Km Total", value: formatKm(totalKm), isProfit: false },
+              {
+                label: "Líquido",
+                value: formatBRL(totalNetProfit),
+                isProfit: true,
+              },
+            ].map((item) => (
+              <div key={item.label} className="text-center">
+                <div
+                  className="text-xs mb-1"
+                  style={{ color: "oklch(0.68 0.025 225)" }}
+                >
+                  {item.label}
+                </div>
+                <div
+                  className="text-base font-bold"
+                  style={{
+                    color: item.isProfit
+                      ? totalNetProfit >= 0
+                        ? "oklch(0.91 0.22 125)"
+                        : "oklch(0.65 0.22 22)"
+                      : "oklch(0.94 0.01 240)",
+                  }}
+                >
+                  {item.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 overflow-y-auto px-5 pb-32">
         <h2 className="text-xl font-bold text-foreground mt-5 mb-5">
           Registrar Corrida
         </h2>
+
+        {/* Timer */}
+        <div
+          className="rounded-xl p-4 mb-5 border"
+          style={{
+            background: "oklch(0.13 0.02 242)",
+            borderColor: isRunning
+              ? "oklch(0.91 0.22 125 / 0.4)"
+              : "oklch(0.24 0.025 245)",
+            boxShadow: isRunning
+              ? "0 0 16px oklch(0.91 0.22 125 / 0.12)"
+              : "none",
+          }}
+          data-ocid="ride.timer.panel"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Timer
+                size={16}
+                style={{
+                  color: isRunning
+                    ? "oklch(0.91 0.22 125)"
+                    : "oklch(0.68 0.025 225)",
+                }}
+              />
+              <span
+                className="text-sm font-medium"
+                style={{ color: "oklch(0.68 0.025 225)" }}
+              >
+                Cronômetro
+              </span>
+            </div>
+            <div
+              className="font-mono text-2xl font-bold tracking-widest"
+              style={{
+                color: isRunning
+                  ? "oklch(0.91 0.22 125)"
+                  : rideEndTime
+                    ? "oklch(0.94 0.01 240)"
+                    : "oklch(0.45 0.02 240)",
+              }}
+            >
+              {formatDuration(elapsed)}
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            {!isRunning && !rideEndTime && (
+              <button
+                type="button"
+                onClick={handleStartRide}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-95"
+                style={{
+                  background: "oklch(0.91 0.22 125)",
+                  color: "oklch(0.14 0.04 125)",
+                }}
+                data-ocid="ride.timer_start.button"
+              >
+                <Clock size={14} />
+                Iniciar Corrida
+              </button>
+            )}
+            {isRunning && (
+              <button
+                type="button"
+                onClick={handleStopRide}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-95"
+                style={{
+                  background: "oklch(0.55 0.2 22)",
+                  color: "oklch(0.98 0 0)",
+                }}
+                data-ocid="ride.timer_stop.button"
+              >
+                <Square size={14} />
+                Finalizar Corrida
+              </button>
+            )}
+            {!isRunning && rideEndTime && (
+              <>
+                <div
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{
+                    background: "oklch(0.91 0.22 125 / 0.12)",
+                    color: "oklch(0.91 0.22 125)",
+                  }}
+                >
+                  <Clock size={14} />
+                  {formatDuration(elapsed)} registrado
+                </div>
+                <button
+                  type="button"
+                  onClick={resetTimer}
+                  className="px-4 py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-95"
+                  style={{
+                    background: "oklch(0.19 0.026 245)",
+                    color: "oklch(0.68 0.025 225)",
+                  }}
+                  data-ocid="ride.timer_reset.button"
+                >
+                  Reset
+                </button>
+              </>
+            )}
+          </div>
+        </div>
 
         {/* Inputs */}
         <div className="flex flex-col gap-4 mb-5">
@@ -227,23 +474,22 @@ export default function RideEntry({
                   className="flex flex-col items-center justify-center py-4 rounded-xl border-2 transition-all duration-150 active:scale-95"
                   style={{
                     background: isSelected
-                      ? "oklch(0.16 0.022 242)"
+                      ? `${PLATFORM_BG[p]}18`
                       : "oklch(0.13 0.02 240)",
                     borderColor: isSelected
-                      ? "oklch(0.91 0.22 125)"
+                      ? PLATFORM_BG[p]
                       : "oklch(0.24 0.025 245)",
                     boxShadow: isSelected
-                      ? "0 0 12px oklch(0.91 0.22 125 / 0.3)"
+                      ? `0 0 16px ${PLATFORM_BG[p]}44`
                       : "none",
                   }}
                   data-ocid={`ride.platform.${p}.button`}
                 >
                   <div
-                    className="w-7 h-7 rounded-lg mb-2 flex items-center justify-center text-xs font-black"
+                    className="w-8 h-8 rounded-lg mb-2 flex items-center justify-center text-xs font-black"
                     style={{
                       background: PLATFORM_BG[p],
-                      color:
-                        p === "uber" ? "oklch(0.10 0 0)" : "oklch(0.98 0 0)",
+                      color: PLATFORM_TEXT[p],
                     }}
                   >
                     {p === "uber" ? "U" : p === "99" ? "99" : "iD"}
@@ -252,7 +498,7 @@ export default function RideEntry({
                     className="text-xs font-bold"
                     style={{
                       color: isSelected
-                        ? "oklch(0.91 0.22 125)"
+                        ? PLATFORM_BG[p]
                         : "oklch(0.68 0.025 225)",
                     }}
                   >
@@ -379,10 +625,7 @@ export default function RideEntry({
                         className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-black"
                         style={{
                           background: PLATFORM_BG[ride.platform],
-                          color:
-                            ride.platform === "uber"
-                              ? "oklch(0.10 0 0)"
-                              : "oklch(0.98 0 0)",
+                          color: PLATFORM_TEXT[ride.platform],
                         }}
                       >
                         {ride.platform === "uber"
@@ -400,6 +643,15 @@ export default function RideEntry({
                       >
                         {formatKm(ride.km)}
                       </span>
+                      {ride.duration && (
+                        <span
+                          className="text-xs flex items-center gap-0.5"
+                          style={{ color: "oklch(0.55 0.18 250)" }}
+                        >
+                          <Clock size={10} />
+                          {formatDuration(ride.duration)}
+                        </span>
+                      )}
                     </div>
                     <span
                       className="text-base font-bold"
@@ -414,39 +666,29 @@ export default function RideEntry({
                     </span>
                   </div>
                   <div className="flex gap-4">
-                    <div>
-                      <div
-                        className="text-xs"
-                        style={{ color: "oklch(0.68 0.025 225)" }}
-                      >
-                        Bruto
+                    {[
+                      { label: "Bruto", value: formatBRL(ride.grossValue) },
+                      {
+                        label: "Taxa",
+                        value: `- ${formatBRL(ride.platformFee)}`,
+                      },
+                      {
+                        label: "Custo",
+                        value: `- ${formatBRL(ride.rideCost)}`,
+                      },
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <div
+                          className="text-xs"
+                          style={{ color: "oklch(0.68 0.025 225)" }}
+                        >
+                          {item.label}
+                        </div>
+                        <div className="text-xs font-medium text-foreground">
+                          {item.value}
+                        </div>
                       </div>
-                      <div className="text-xs font-medium text-foreground">
-                        {formatBRL(ride.grossValue)}
-                      </div>
-                    </div>
-                    <div>
-                      <div
-                        className="text-xs"
-                        style={{ color: "oklch(0.68 0.025 225)" }}
-                      >
-                        Taxa
-                      </div>
-                      <div className="text-xs font-medium text-foreground">
-                        - {formatBRL(ride.platformFee)}
-                      </div>
-                    </div>
-                    <div>
-                      <div
-                        className="text-xs"
-                        style={{ color: "oklch(0.68 0.025 225)" }}
-                      >
-                        Custo
-                      </div>
-                      <div className="text-xs font-medium text-foreground">
-                        - {formatBRL(ride.rideCost)}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               ))}

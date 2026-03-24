@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect, useState } from "react";
+import ChartsScreen from "./components/ChartsScreen";
 import DaySummary from "./components/DaySummary";
 import RideEntry from "./components/RideEntry";
 import VehicleSetup from "./components/VehicleSetup";
@@ -7,6 +8,7 @@ import type { Ride, Screen, VehicleConfig } from "./types";
 
 const VEHICLE_KEY = "lucro_vehicle";
 const RIDES_KEY = "lucro_rides";
+const HISTORY_KEY = "lucro_rides_history";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("setup");
@@ -14,12 +16,13 @@ export default function App() {
     null,
   );
   const [rides, setRides] = useState<Ride[]>([]);
+  const [allHistory, setAllHistory] = useState<Ride[]>([]);
   const [screenKey, setScreenKey] = useState(0);
 
-  // Load from localStorage on mount
   useEffect(() => {
     const savedVehicle = localStorage.getItem(VEHICLE_KEY);
     const savedRides = localStorage.getItem(RIDES_KEY);
+    const savedHistory = localStorage.getItem(HISTORY_KEY);
     if (savedVehicle) {
       const config: VehicleConfig = JSON.parse(savedVehicle);
       setVehicleConfig(config);
@@ -27,6 +30,9 @@ export default function App() {
     }
     if (savedRides) {
       setRides(JSON.parse(savedRides));
+    }
+    if (savedHistory) {
+      setAllHistory(JSON.parse(savedHistory));
     }
   }, []);
 
@@ -42,12 +48,16 @@ export default function App() {
   };
 
   const handleAddRide = (ride: Ride) => {
-    const updated = [...rides, ride];
-    setRides(updated);
-    localStorage.setItem(RIDES_KEY, JSON.stringify(updated));
+    const updatedRides = [...rides, ride];
+    const updatedHistory = [...allHistory, ride];
+    setRides(updatedRides);
+    setAllHistory(updatedHistory);
+    localStorage.setItem(RIDES_KEY, JSON.stringify(updatedRides));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
   };
 
   const handleFinishDay = () => {
+    // Keep history but clear current day rides
     setRides([]);
     localStorage.removeItem(RIDES_KEY);
     navigateTo("ride");
@@ -70,12 +80,19 @@ export default function App() {
             onAddRide={handleAddRide}
             onGoToSetup={() => navigateTo("setup")}
             onGoToSummary={() => navigateTo("summary")}
+            onGoToCharts={() => navigateTo("charts")}
           />
         )}
         {screen === "summary" && vehicleConfig && (
           <DaySummary
             rides={rides}
             onFinishDay={handleFinishDay}
+            onBack={() => navigateTo("ride")}
+          />
+        )}
+        {screen === "charts" && (
+          <ChartsScreen
+            allHistory={allHistory}
             onBack={() => navigateTo("ride")}
           />
         )}

@@ -1,5 +1,22 @@
-import { ArrowLeft, RotateCcw } from "lucide-react";
-import { PLATFORM_LABELS, type Platform, type Ride, formatBRL } from "../types";
+import { ArrowLeft, Download, RotateCcw } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  PLATFORM_LABELS,
+  type Platform,
+  type Ride,
+  formatBRL,
+  formatDuration,
+} from "../types";
 
 interface Props {
   rides: Ride[];
@@ -13,6 +30,18 @@ const PLATFORM_ACCENT: Record<Platform, string> = {
   indrive: "oklch(0.72 0.18 145)",
 };
 
+const PLATFORM_COLORS: Record<Platform, string> = {
+  uber: "#d4d4d4",
+  "99": "#e8540a",
+  indrive: "#4ade80",
+};
+
+const STATS_ITEMS = [
+  { key: "gross", label: "Receita Bruta", color: "oklch(0.94 0.01 240)" },
+  { key: "fees", label: "Taxas Pagas", color: "oklch(0.65 0.22 22)" },
+  { key: "cost", label: "Custo Veículo", color: "oklch(0.72 0.18 55)" },
+] as const;
+
 interface PlatformStats {
   platform: Platform;
   count: number;
@@ -22,11 +51,38 @@ interface PlatformStats {
   net: number;
 }
 
-const STATS_ITEMS = [
-  { key: "gross", label: "Receita Bruta", color: "oklch(0.94 0.01 240)" },
-  { key: "fees", label: "Taxas Pagas", color: "oklch(0.65 0.22 22)" },
-  { key: "cost", label: "Custo Veículo", color: "oklch(0.72 0.18 55)" },
-] as const;
+function exportCSV(rides: Ride[]) {
+  const headers = [
+    "#",
+    "Plataforma",
+    "Bruto (R$)",
+    "Taxa (R$)",
+    "Custo (R$)",
+    "Lucro (R$)",
+    "Km",
+    "Duração",
+    "Horário",
+  ];
+  const rows = rides.map((r, i) => [
+    i + 1,
+    PLATFORM_LABELS[r.platform],
+    r.grossValue.toFixed(2),
+    r.platformFee.toFixed(2),
+    r.rideCost.toFixed(2),
+    r.netProfit.toFixed(2),
+    r.km.toFixed(1),
+    r.duration ? formatDuration(r.duration) : "",
+    new Date(r.timestamp).toLocaleString("pt-BR"),
+  ]);
+  const csv = [headers, ...rows].map((row) => row.join(";")).join("\n");
+  const blob = new Blob([`FEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `lucro-real-${new Date().toLocaleDateString("pt-BR").replace(/\//g, "-")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function DaySummary({ rides, onFinishDay, onBack }: Props) {
   const totalGross = rides.reduce((s, r) => s + r.grossValue, 0);
@@ -66,6 +122,24 @@ export default function DaySummary({ rides, onFinishDay, onBack }: Props) {
     cost: formatBRL(totalCost),
   };
 
+  // Pie chart data
+  const pieData = platformStats
+    .filter((s) => s.net > 0)
+    .map((s) => ({
+      name: PLATFORM_LABELS[s.platform],
+      value: Number.parseFloat(s.net.toFixed(2)),
+      platform: s.platform,
+      color: PLATFORM_COLORS[s.platform],
+    }));
+
+  // Bar chart data — lucro por corrida
+  const barData = rides.map((r, i) => ({
+    name: `#${i + 1}`,
+    lucro: Number.parseFloat(r.netProfit.toFixed(2)),
+    platform: r.platform,
+    color: PLATFORM_COLORS[r.platform],
+  }));
+
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       {/* Header */}
@@ -83,7 +157,25 @@ export default function DaySummary({ rides, onFinishDay, onBack }: Props) {
         >
           <ArrowLeft size={16} style={{ color: "oklch(0.68 0.025 225)" }} />
         </button>
-        <h1 className="text-xl font-bold text-foreground">Resumo do Dia</h1>
+        <h1 className="text-xl font-bold text-foreground flex-1">
+          Resumo do Dia
+        </h1>
+        {rides.length > 0 && (
+          <button
+            type="button"
+            onClick={() => exportCSV(rides)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 border"
+            style={{
+              background: "oklch(0.16 0.022 242)",
+              borderColor: "oklch(0.55 0.18 250 / 0.5)",
+              color: "oklch(0.72 0.18 250)",
+            }}
+            data-ocid="summary.export.button"
+          >
+            <Download size={13} />
+            Exportar CSV
+          </button>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto px-5 pb-36 pt-5">
@@ -131,6 +223,10 @@ export default function DaySummary({ rides, onFinishDay, onBack }: Props) {
                       ? "oklch(0.91 0.22 125)"
                       : "oklch(0.65 0.22 22)",
                   lineHeight: 1.1,
+                  textShadow:
+                    totalNet >= 0
+                      ? "0 0 32px oklch(0.91 0.22 125 / 0.5)"
+                      : "none",
                 }}
               >
                 {formatBRL(totalNet)}
@@ -174,7 +270,134 @@ export default function DaySummary({ rides, onFinishDay, onBack }: Props) {
               ))}
             </div>
 
-            {/* Bar chart */}
+            {/* Pie chart by platform */}
+            {pieData.length > 0 && (
+              <div
+                className="rounded-xl p-4 mb-5 border"
+                style={{
+                  background: "oklch(0.16 0.022 242)",
+                  borderColor: "oklch(0.24 0.025 245)",
+                }}
+                data-ocid="summary.pie_chart.panel"
+              >
+                <div className="text-sm font-semibold text-foreground mb-4">
+                  Distribuição por Plataforma
+                </div>
+                <div className="flex items-center gap-4">
+                  <div style={{ width: 130, height: 130, flexShrink: 0 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={38}
+                          outerRadius={58}
+                          paddingAngle={3}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {pieData.map((entry) => (
+                            <Cell key={entry.platform} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(v: number) => formatBRL(v)}
+                          contentStyle={{
+                            background: "#0f1319",
+                            border: "1px solid #2a2f3a",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            color: "#e0e4ee",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-col gap-2 flex-1">
+                    {pieData.map((entry) => (
+                      <div
+                        key={entry.platform}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ background: entry.color }}
+                          />
+                          <span
+                            className="text-xs"
+                            style={{ color: "oklch(0.68 0.025 225)" }}
+                          >
+                            {entry.name}
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-foreground">
+                          {formatBRL(entry.value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bar chart per ride */}
+            {barData.length > 1 && (
+              <div
+                className="rounded-xl p-4 mb-5 border"
+                style={{
+                  background: "oklch(0.16 0.022 242)",
+                  borderColor: "oklch(0.24 0.025 245)",
+                }}
+                data-ocid="summary.bar_chart.panel"
+              >
+                <div className="text-sm font-semibold text-foreground mb-4">
+                  Lucro por Corrida
+                </div>
+                <div style={{ height: 120 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={barData}
+                      margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+                    >
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 10, fill: "#6b7a99" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "#6b7a99" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v: number) =>
+                          v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)
+                        }
+                      />
+                      <Tooltip
+                        formatter={(v: number) => [formatBRL(v), "Lucro"]}
+                        contentStyle={{
+                          background: "#0f1319",
+                          border: "1px solid #2a2f3a",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          color: "#e0e4ee",
+                        }}
+                        cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                      />
+                      <Bar dataKey="lucro" radius={[3, 3, 0, 0]}>
+                        {barData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {/* Bar chart by platform */}
             {platformStats.length > 0 && (
               <div
                 className="rounded-xl p-4 mb-5 border"
