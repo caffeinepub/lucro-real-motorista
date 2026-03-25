@@ -26,7 +26,7 @@ import {
 
 interface Props {
   allHistory: Ride[];
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 type BarEntry = { xKey: string; uber: number; "99": number; indrive: number };
@@ -592,16 +592,18 @@ export default function ChartsScreen({ allHistory, onBack }: Props) {
         className="px-5 pt-10 pb-4 flex items-center gap-3"
         style={{ borderBottom: "1px solid oklch(0.24 0.025 245)" }}
       >
-        <button
-          type="button"
-          onClick={onBack}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-opacity hover:opacity-70"
-          style={{ background: "oklch(0.19 0.026 245)" }}
-          data-ocid="charts.back.button"
-          aria-label="Voltar"
-        >
-          <ArrowLeft size={16} style={{ color: "oklch(0.68 0.025 225)" }} />
-        </button>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-opacity hover:opacity-70"
+            style={{ background: "oklch(0.19 0.026 245)" }}
+            data-ocid="charts.back.button"
+            aria-label="Voltar"
+          >
+            <ArrowLeft size={16} style={{ color: "oklch(0.68 0.025 225)" }} />
+          </button>
+        )}
         <div className="flex items-center gap-2 flex-1">
           <BarChart2 size={18} color="#1a73e8" />
           <h1 className="text-xl font-bold text-foreground">Gráficos</h1>

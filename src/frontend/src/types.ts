@@ -23,6 +23,12 @@ export interface Ride {
   endTime?: number; // ms timestamp
 }
 
+export interface User {
+  name: string;
+  email: string;
+  birthdate?: string;
+}
+
 export type Screen = "setup" | "ride" | "summary" | "charts";
 
 export const PLATFORM_RATES: Record<Platform, number> = {

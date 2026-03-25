@@ -27,7 +27,7 @@ interface Props {
   onAddRide: (ride: Ride) => void;
   onGoToSetup: () => void;
   onGoToSummary: () => void;
-  onGoToCharts: () => void;
+  onGoToCharts?: () => void;
 }
 
 const PLATFORM_BG: Record<Platform, string> = {
@@ -161,21 +161,23 @@ export default function RideEntry({
         </button>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onGoToCharts}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all active:scale-95"
-            style={{ background: "oklch(0.16 0.022 242)" }}
-            data-ocid="ride.charts.button"
-          >
-            <BarChart2 size={14} style={{ color: "#1a73e8" }} />
-            <span
-              className="text-xs font-semibold"
-              style={{ color: "oklch(0.68 0.025 225)" }}
+          {onGoToCharts && (
+            <button
+              type="button"
+              onClick={onGoToCharts}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all active:scale-95"
+              style={{ background: "oklch(0.16 0.022 242)" }}
+              data-ocid="ride.charts.button"
             >
-              Gráficos
-            </span>
-          </button>
+              <BarChart2 size={14} style={{ color: "#1a73e8" }} />
+              <span
+                className="text-xs font-semibold"
+                style={{ color: "oklch(0.68 0.025 225)" }}
+              >
+                Gráficos
+              </span>
+            </button>
+          )}
 
           <button
             type="button"

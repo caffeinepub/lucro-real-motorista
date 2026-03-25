@@ -1,35 +1,31 @@
 # Lucro Real Motorista
 
 ## Current State
-App funcional com 3 telas: configuração de veículo (VehicleSetup), registro de corridas (RideEntry), e resumo do dia (DaySummary). Dados persistidos no localStorage. Calcula lucro líquido descontando taxa da plataforma (Uber 28%, 99 20%, inDrive 10%) e custo de km (combustão ou elétrico). Tem cronômetro de corrida e exportação CSV.
+App funcional com fluxo: setup -> ride -> summary -> charts. Sem autenticação. Navegação por troca de tela. Dados em localStorage. Gráficos por plataforma (Uber, 99, inDrive) com visão dia/mês/ano.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Tela de Gráficos dedicada com navegação entre Dia / Mês / Ano
-- Gráficos por plataforma separados: barras de lucro por hora do dia, pizza de distribuição de corridas por plataforma
-- Gráfico combinado: linha de lucro acumulado ao longo do tempo
-- Histórico multi-dia: corridas são salvas com data, permitindo visualização por mês e ano
-- Painel de estatísticas rápidas na tela principal: total de corridas, lucro médio por corrida, melhor plataforma do dia
-- Visual completamente renovado: dark tech dashboard, gradientes neon, cards com glow, tipografia bold
+- Tela de Login com mascote pug 3D/caricatura no topo
+- Formulário de cadastro: email, senha, data de nascimento
+- Formulário de login: email e senha
+- Botão "Entrar com Google" (simulado visualmente, sem OAuth real)
+- Navegação por 3 abas inferiores: Login/Perfil | Ativar App | Gráficos
+- Autenticação local simulada com localStorage (sem backend auth)
+- Guard: abas 2 e 3 só acessíveis após login
 
 ### Modify
-- App.tsx: adicionar nova tela 'charts' e tipo Screen
-- RideEntry: cada corrida salva com timestamp (data/hora)
-- DaySummary: link para tela de gráficos
-- types.ts: Ride deve ter campo `timestamp: string` (ISO date)
-- localStorage: rides salvos com histórico acumulado multi-dia (não limpar ao finalizar expediente, só arquivar)
+- App.tsx: reestruturar para 3 abas com bottom navigation
+- Aba 2 "Ativar Aplicativo": unifica VehicleSetup + RideEntry + DaySummary
+- Aba 3 "Gráficos": ChartsScreen existente
+- Aba 1 após login vira "Perfil" com nome do usuário e botão sair
 
 ### Remove
-- Nada removido
+- Botões de navegação inline entre telas (substituídos pelo bottom nav)
 
 ## Implementation Plan
-1. Atualizar types.ts: adicionar `timestamp` em Ride, adicionar 'charts' em Screen
-2. Criar componente ChartsScreen.tsx com:
-   - Tabs: Dia / Mês / Ano
-   - Recharts: BarChart de lucro por hora, PieChart de corridas por plataforma, LineChart de lucro acumulado
-   - Filtros de data
-3. Atualizar App.tsx para incluir tela de gráficos
-4. Redesign visual completo: dark dashboard profissional com cores neon (verde para lucro, azul para Uber, amarelo para 99, laranja para inDrive)
-5. Atualizar RideEntry para adicionar timestamp automaticamente ao registrar corrida
-6. Validar e fazer build
+1. Criar componente LoginScreen com pug image, formulários login/cadastro, botão Google simulado
+2. Criar componente BottomNav com 3 abas
+3. Criar AuthContext/state em App.tsx para controle de autenticação via localStorage
+4. Integrar tudo em App.tsx com lógica de guarda de rota por aba
+5. Adaptar RideEntry e VehicleSetup para remover navegação para charts (agora via bottom nav)
