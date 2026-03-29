@@ -18,18 +18,9 @@ export interface Ride {
   rideCost: number;
   netProfit: number;
   timestamp: number;
-  duration?: number; // seconds
-  startTime?: number; // ms timestamp
-  endTime?: number; // ms timestamp
 }
 
-export interface User {
-  name: string;
-  email: string;
-  birthdate?: string;
-}
-
-export type Screen = "setup" | "ride" | "summary" | "charts";
+export type Screen = "setup" | "ride" | "summary";
 
 export const PLATFORM_RATES: Record<Platform, number> = {
   uber: 0.28,
@@ -43,13 +34,6 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   indrive: "inDRIVE",
 };
 
-// Hex colors for Recharts (canvas cannot use CSS vars)
-export const PLATFORM_HEX: Record<Platform, string> = {
-  uber: "#1a73e8",
-  "99": "#ffd600",
-  indrive: "#f39c12",
-};
-
 export function formatBRL(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -59,10 +43,4 @@ export function formatKm(value: number): string {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })} km`;
-}
-
-export function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
